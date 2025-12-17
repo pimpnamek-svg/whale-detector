@@ -2,6 +2,25 @@ import time
 from typing import List, Dict, Any
 
 import ccxt
+from flask import Flask, jsonify
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    results = scan_once()
+    return f"""
+    <h1>🐋 Gizmo Whale Scanner</h1>
+    <p>Found {len(results)} candidates:</p>
+    <pre>{json.dumps(results[:20], indent=2)}</pre>
+    <p><a href="/scan">Full scan →</a></p>
+    """
+
+@app.route('/scan')
+def scan():
+    return jsonify(scan_once())
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
 
 
 # ==========================
