@@ -2,229 +2,138 @@ import time
 from typing import List, Dict, Any
 
 import ccxt
-from flask import Flask, jsonify
-app = Flask(__name__)
+import numpy as np
+from fastapi import FastAPI
 
-@app.route('/')
-def home():
-    results = scan_once()
-    return f"""
-    <h1>🐋 Gizmo Whale Scanner</h1>
-    <p>Found {len(results)} candidates:</p>
-    <pre>{json.dumps(results[:20], indent=2)}</pre>
-    <p><a href="/scan">Full scan →</a></p>
-    """
 
-@app.route('/scan')
-def scan():
-    return jsonify(scan_once())
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+# ==========================
+# APP
+# ==========================
+app = FastAPI(title="OKX Liquidity Grab Scanner")
 
 
 # ==========================
 # CONFIG
 # ==========================
-EXCHANGE_NAME = "okx"
-TIMEFRAME = "5m"          # 5-minute candles
-LIMIT = 20                # last 20 candles
-VOLUME_SPIKE_MULT = 5.0   # last candle volume >= 5x average
-TIER2_MULT = 3.0          # medium spike threshold
-TIER3_MULT = 8.0          # extreme spike threshold
-MIN_SPIKE_MOVE_PCT = 1.5  # % move in last candle for spike
-ACCUM_LOOKBACK = 20       # candles to check for accumulation
-ACCUM_MIN_PCT = 1.0       # total move at least this
-ACCUM_MAX_PCT = 4.0       # total move at most this
-ACCUM_LOW_VOL_FRACTION = 0.6  # fraction of bars with <= average volume
+TIMEFRAME = "5m"
+LIMIT = 20
+
+VOLUME_SPIKE_MULT = 6.0
+EXTREME_SPIKE_MULT = 8.0
+MIN_MOVE_PCT = 2.0
+WICK_THRESHOLD = 0.4  # 40% wick
 
 
 # ==========================
-# EXCHANGE WRAPPER
+# EXCHANGE
 # ==========================
 def create_okx_client():
-    exchange = ccxt.okx({
-        "enableRateLimit": True,
-    })
-    return exchange
+    return ccxt.okx({"enableRateLimit": True})
 
 
-def get_usdt_symbols(exchange) -> List[str]:
+def get_usdt_symbols(exchange):
     markets = exchange.load_markets()
-    symbols = []
-    for symbol, info in markets.items():
-        # Spot USDT pairs only
-        if info.get("spot") and symbol.endswith("/USDT"):
-            symbols.append(symbol)
-    return symbols
+    return [
+        s for s, info in markets.items()
+        if info.get("spot") and s.endswith("/USDT")
+    ]
 
 
-def fetch_candles(exchange, symbol: str, timeframe: str, limit: int):
-    """Return list of OHLCV candles: [timestamp, open, high, low, close, volume]."""
-    return exchange.fetch_ohlcv(symbol, timeframe=timeframe, limit=limit)
+def fetch_candles(exchange, symbol):
+    return exchange.fetch_ohlcv(symbol, TIMEFRAME, limit=LIMIT)
 
 
 # ==========================
-# ANALYSIS HELPERS
+# CORE LOGIC
 # ==========================
-def calc_volume_spike(candles: List[List[float]]) -> Dict[str, Any]:
-    if len(candles) < 2:
-        return {
-            "spike": False,
-            "volume_mult": 0.0,
-            "move_pct": 0.0
-        }
+def analyze_liquidity_grab(candles):
+    if len(candles) < 5:
+        return None
 
-    closes = [c[4] for c in candles]
-    vols = [c[5] for c in candles]
+    vols = [c[5] for c in candles[:-1]]
+    last = candles[-1]
 
-    avg_vol = sum(vols[:-1]) / max(len(vols) - 1, 1)
-    last_vol = vols[-1]
-    last_open = candles[-1][1]
-    last_close = candles[-1][4]
+    avg_vol = np.mean(vols)
+    vol_mult = last[5] / avg_vol if avg_vol > 0 else 0
 
-    volume_mult = last_vol / avg_vol if avg_vol > 0 else 0.0
-    move_pct = abs(last_close - last_open) / last_open * 100 if last_open > 0 else 0.0
+    o, h, l, c = last[1], last[2], last[3], last[4]
+    rng = h - l
+    body = abs(c - o)
+    wick = rng - body
 
-    spike = volume_mult >= VOLUME_SPIKE_MULT and move_pct >= MIN_SPIKE_MOVE_PCT
+    move_pct = abs(c - o) / o * 100 if o > 0 else 0
 
-    return {
-        "spike": spike,
-        "volume_mult": round(volume_mult, 2),
-        "move_pct": round(move_pct, 2),
-    }
+    # Hard filters
+    if vol_mult < VOLUME_SPIKE_MULT or move_pct < MIN_MOVE_PCT:
+        return None
 
+    wick_ratio = wick / rng if rng > 0 else 0
+    if wick_ratio < WICK_THRESHOLD:
+        return None
 
-def detect_quiet_accumulation(candles: List[List[float]]) -> Dict[str, Any]:
-    if len(candles) < ACCUM_LOOKBACK:
-        return {
-            "accumulation": False,
-            "strength": 0.0,
-            "total_move_pct": 0.0
-        }
+    direction = "bull_trap" if c < o else "bear_trap"
 
-    closes = [c[4] for c in candles]
-    vols = [c[5] for c in candles]
-
-    start = closes[-ACCUM_LOOKBACK]
-    end = closes[-1]
-    total_move_pct = (end - start) / start * 100 if start > 0 else 0.0
-
-    avg_vol = sum(vols[-ACCUM_LOOKBACK:]) / ACCUM_LOOKBACK
-    low_vol_bars = sum(1 for v in vols[-ACCUM_LOOKBACK:] if v <= avg_vol)
-    low_vol_fraction = low_vol_bars / ACCUM_LOOKBACK
-
-    # Simple rules: uptrend but not mooning, and mostly average/below-average volume
-    accumulation = (
-        ACCUM_MIN_PCT <= total_move_pct <= ACCUM_MAX_PCT
-        and low_vol_fraction >= ACCUM_LOW_VOL_FRACTION
-    )
-
-    strength = 0.0
-    if accumulation:
-        # scale strength by move and low-vol fraction
-        strength = min(1.0, (total_move_pct / ACCUM_MAX_PCT) * low_vol_fraction)
-
-    return {
-        "accumulation": accumulation,
-        "strength": round(strength, 2),
-        "total_move_pct": round(total_move_pct, 2),
-    }
-
-
-def assign_tier(spike_info: Dict[str, Any], accum_info: Dict[str, Any]) -> Dict[str, Any]:
-    volume_mult = spike_info["volume_mult"]
-    move_pct = spike_info["move_pct"]
-    accumulation = accum_info["accumulation"]
-    strength = accum_info["strength"]
-
-    tier = 0
-    reasons = []
-
-    # Tier by spike
-    if volume_mult >= TIER2_MULT:
-        tier = 1
-        reasons.append(f"vol ≥ {TIER2_MULT}x avg")
-    if volume_mult >= VOLUME_SPIKE_MULT and spike_info["spike"]:
-        tier = 2
-        reasons.append(f"whale spike {volume_mult}x, {move_pct}% move")
-    if volume_mult >= TIER3_MULT and move_pct >= MIN_SPIKE_MOVE_PCT * 2:
+    tier = 2
+    if vol_mult >= EXTREME_SPIKE_MULT and move_pct >= MIN_MOVE_PCT * 1.5:
         tier = 3
-        reasons.append(f"extreme spike {volume_mult}x, {move_pct}% move")
 
-    # Tier by accumulation
-    if accumulation:
-        if tier < 1:
-            tier = 1
-        if strength >= 0.5 and tier < 2:
-            tier = 2
-        if strength >= 0.8 and tier < 3:
-            tier = 3
-        reasons.append(f"quiet accumulation, strength {strength}")
+    # Trade levels
+    if direction == "bear_trap":
+        entry = round((h + c) / 2, 4)
+        stop = round(h * 1.002, 4)
+        targets = [round((o + l) / 2, 4), round(l, 4)]
+    else:
+        entry = round((l + c) / 2, 4)
+        stop = round(l * 0.998, 4)
+        targets = [round((o + h) / 2, 4), round(h, 4)]
 
     return {
         "tier": tier,
-        "reasons": reasons,
+        "direction": direction,
+        "volume_mult": round(vol_mult, 2),
+        "move_pct": round(move_pct, 2),
+        "entry": entry,
+        "stop": stop,
+        "targets": targets,
+        "alert": "cash_register" if tier == 3 else "bell",
     }
 
 
 # ==========================
-# SCAN LOOP
+# SCANNER
 # ==========================
-def scan_once() -> List[Dict[str, Any]]:
+def run_scan():
     exchange = create_okx_client()
     symbols = get_usdt_symbols(exchange)
 
-    results = []
+    hits = []
     for symbol in symbols:
         try:
-            candles = fetch_candles(exchange, symbol, TIMEFRAME, LIMIT)
-            if not candles:
-                continue
-
-            spike_info = calc_volume_spike(candles)
-            accum_info = detect_quiet_accumulation(candles)
-            tier_info = assign_tier(spike_info, accum_info)
-
-            if tier_info["tier"] > 0:
-                results.append({
-                    "symbol": symbol,
-                    "tier": tier_info["tier"],
-                    "spike": spike_info["spike"],
-                    "volume_mult": spike_info["volume_mult"],
-                    "move_pct": spike_info["move_pct"],
-                    "accumulation": accum_info["accumulation"],
-                    "accum_strength": accum_info["strength"],
-                    "total_move_pct": accum_info["total_move_pct"],
-                    "reasons": tier_info["reasons"],
-                })
-        except Exception as e:
-            # Ignore single-symbol errors for now, just continue
-            print(f"Error scanning {symbol}: {e}")
+            candles = fetch_candles(exchange, symbol)
+            signal = analyze_liquidity_grab(candles)
+            if signal:
+                hits.append({"symbol": symbol, **signal})
+        except Exception:
             time.sleep(0.2)
 
-    # Sort: highest tier first, then highest volume_mult
-    results.sort(key=lambda x: (x["tier"], x["volume_mult"]), reverse=True)
-    return results
+    hits.sort(key=lambda x: (x["tier"], x["volume_mult"]), reverse=True)
+    return hits
 
 
-def main():
-    print(f"Scanning OKX {TIMEFRAME} USDT pairs (last {LIMIT} candles)...")
-    results = scan_once()
-    if not results:
-        print("No whale or accumulation candidates found this scan.")
-        return
-
-    for r in results[:50]:  # show top 50 to avoid spam
-        print("-" * 60)
-        print(f"Symbol:         {r['symbol']}")
-        print(f"Tier:           {r['tier']}")
-        print(f"Whale spike:    {r['spike']}  (vol x{r['volume_mult']}, move {r['move_pct']}%)")
-        print(f"Accumulation:   {r['accumulation']}  (strength {r['accum_strength']}, total {r['total_move_pct']}%)")
-        print("Reasons:")
-        for reason in r["reasons"]:
-            print(f"  - {reason}")
+# ==========================
+# ROUTES
+# ==========================
+@app.get("/")
+def health_check():
+    return {"status": "ok", "service": "Liquidity Grab Scanner"}
 
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+@app.get("/scan")
+def scan():
+    results = run_scan()
+    return {
+        "timeframe": TIMEFRAME,
+        "signals": results,
+        "count": len(results),
+    }
+
