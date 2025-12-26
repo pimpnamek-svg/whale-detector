@@ -21,7 +21,7 @@ import time
 from dataclasses import dataclass
 from typing import Optional, Dict, Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from pydantic import BaseModel, Field
 
 
