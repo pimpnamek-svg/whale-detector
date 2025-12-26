@@ -18,7 +18,7 @@ cooldown_start_time = time.time()
 # ==========================
 # MANUAL OVERRIDES (TESTING ONLY)
 # ==========================
-FORCE_RELEASE = False  # set to True to simulate RELEASE
+FORCE_RELEASE = True  # set to True to simulate RELEASE
 
 
 @app.get("/whale-status")
