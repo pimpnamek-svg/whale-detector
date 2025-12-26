@@ -239,24 +239,28 @@ def root() -> Dict[str, str]:
 
 
 @app.get("/whale-status")
-def whale_status() -> Dict[str, Any]:
-    now_ts = _now()
+def whale_status(force: str | None = Query(default=None)):
+    global FORCE_RELEASE, FORCE_STATE
+
+    # ==========================
+    # BROWSER-BASED OVERRIDES
+    # ==========================
+    if force:
+        f = force.lower().strip()
+        if f == "release":
+            FORCE_RELEASE = True
+            FORCE_STATE = None
+        elif f in {"positioning", "transition", "distribution"}:
+            FORCE_RELEASE = False
+            FORCE_STATE = f.upper()
+        elif f == "clear":
+            FORCE_RELEASE = False
+            FORCE_STATE = None
+
+    now_ts = time.time()
 
     phase_info = _compute_phase_and_remaining(now_ts)
     phase = _resolve_effective_phase(phase_info["phase"])
-
-    # If forced state differs from computed, we still want the timer to reflect the forced phase duration.
-    # So compute remaining for the *effective phase*:
-    effective_remaining = None
-    if phase != "RELEASE":
-        # For pinned/forced phases, show remaining in that phase based on its duration and current cycle position.
-        # Simpler: show the computed remaining if it matches; else show full duration countdown from "now".
-        if phase == phase_info["phase"]:
-            effective_remaining = phase_info["phase_remaining"]
-        else:
-            # show a stable countdown that starts when user forced the state (not tracked here),
-            # so we just show the full phase duration as remaining for display.
-            effective_remaining = PHASE_DURATIONS_SECONDS.get(phase, 0)
 
     confidence = _compute_confidence(phase)
     confidence_grade = _grade_from_score(confidence)
@@ -264,18 +268,24 @@ def whale_status() -> Dict[str, Any]:
 
     permission = _entry_permission(phase, confidence, fail_state)
 
-    # Timer field: only meaningful when locked phases are active
-    cooldown_seconds_remaining = effective_remaining if permission == "LOCKED" else None
+    # timer only shown when locked
+    cooldown = None
+    if permission == "LOCKED":
+        if phase == phase_info["phase"]:
+            cooldown = phase_info["phase_remaining"]
+        else:
+            cooldown = PHASE_DURATIONS_SECONDS.get(phase, None)
 
     return {
         "whale_state": phase,
         "entry_permission": permission,
-        "cooldown_seconds_remaining": cooldown_seconds_remaining,
+        "cooldown_seconds_remaining": cooldown,
         "confidence_score": confidence,
         "confidence_grade": confidence_grade,
         "fail_state": fail_state,
-        "message": _message(phase, permission, cooldown_seconds_remaining, confidence, fail_state),
+        "message": _message(phase, permission, cooldown, confidence, fail_state),
     }
+
 
 
 @app.post("/admin/reset")
