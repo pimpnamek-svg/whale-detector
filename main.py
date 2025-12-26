@@ -23,6 +23,24 @@ FORCE_RELEASE = True  # set to True to simulate RELEASE
 
 @app.get("/whale-status")
 def whale_status():
+
+    # ==========================
+    # MANUAL RELEASE OVERRIDE
+    # ==========================
+    if FORCE_RELEASE:
+        return {
+            "whale_state": "RELEASE",
+            "entry_permission": "ALLOWED",
+            "cooldown_seconds_remaining": None,
+            "confidence_score": 82,
+            "confidence_grade": "A+",
+            "fail_state": None,
+            "message": "🐋 RELEASE — ENTRY ALLOWED (Confidence: 82)"
+        }
+
+    # ==========================
+    # NORMAL COOLDOWN LOGIC
+    # ==========================
     elapsed = int(time.time() - cooldown_start_time)
     remaining = max(COOLDOWN_DURATION - elapsed, 0)
 
@@ -30,7 +48,7 @@ def whale_status():
 
     return {
         "whale_state": "POSITIONING" if is_locked else "TRANSITION",
-        "entry_permission": "LOCKED" if is_locked else "LOCKED",
+        "entry_permission": "LOCKED",
         "cooldown_seconds_remaining": remaining if is_locked else None,
         "confidence_score": None,
         "confidence_grade": None,
@@ -41,6 +59,7 @@ def whale_status():
             else "🐋 TRANSITION — ENTRY LOCKED (Await confirmation)"
         )
     }
+
 
 
 
