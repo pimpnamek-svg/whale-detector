@@ -10,6 +10,12 @@ from fastapi import FastAPI
 # APP
 # ==========================
 app = FastAPI(title="OKX Liquidity Grab Scanner")
+# ==========================
+# COOLDOWN STATE (DISPLAY ONLY)
+# ==========================
+COOLDOWN_DURATION = 900  # seconds (15 minutes)
+cooldown_start_time = time.time()
+
 @app.get("/whale-status")
 def whale_status():
     elapsed = int(time.time() - cooldown_start_time)
