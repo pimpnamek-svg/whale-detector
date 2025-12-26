@@ -12,15 +12,25 @@ from fastapi import FastAPI
 app = FastAPI(title="OKX Liquidity Grab Scanner")
 @app.get("/whale-status")
 def whale_status():
+    elapsed = int(time.time() - cooldown_start_time)
+    remaining = max(COOLDOWN_DURATION - elapsed, 0)
+
+    is_locked = remaining > 0
+
     return {
-        "whale_state": "POSITIONING",
-        "entry_permission": "LOCKED",
-        "cooldown_seconds_remaining": 754,
+        "whale_state": "POSITIONING" if is_locked else "TRANSITION",
+        "entry_permission": "LOCKED" if is_locked else "LOCKED",
+        "cooldown_seconds_remaining": remaining if is_locked else None,
         "confidence_score": None,
         "confidence_grade": None,
         "fail_state": None,
-        "message": "🐋 POSITIONING — ENTRY LOCKED (⏳ 12:34)"
+        "message": (
+            f"🐋 POSITIONING — ENTRY LOCKED (⏳ {remaining // 60}:{remaining % 60:02d})"
+            if is_locked
+            else "🐋 TRANSITION — ENTRY LOCKED (Await confirmation)"
+        )
     }
+
 
 
 
