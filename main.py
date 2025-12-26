@@ -10,6 +10,13 @@ from fastapi import FastAPI
 # APP
 # ==========================
 app = FastAPI(title="OKX Liquidity Grab Scanner")
+@app.get("/whale-status")
+def whale_status():
+    return {
+        "whale_state": "POSITIONING",
+        "entry_permission": "LOCKED",
+        "message": "🐋 POSITIONING — ENTRY LOCKED"
+    }
 
 
 # ==========================
