@@ -15,8 +15,13 @@ def whale_status():
     return {
         "whale_state": "POSITIONING",
         "entry_permission": "LOCKED",
-        "message": "🐋 POSITIONING — ENTRY LOCKED"
+        "cooldown_seconds_remaining": 754,
+        "confidence_score": None,
+        "confidence_grade": None,
+        "fail_state": None,
+        "message": "🐋 POSITIONING — ENTRY LOCKED (⏳ 12:34)"
     }
+
 
 
 # ==========================
