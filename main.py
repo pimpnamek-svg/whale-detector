@@ -15,6 +15,11 @@ app = FastAPI(title="OKX Liquidity Grab Scanner")
 # ==========================
 COOLDOWN_DURATION = 900  # seconds (15 minutes)
 cooldown_start_time = time.time()
+# ==========================
+# MANUAL OVERRIDES (TESTING ONLY)
+# ==========================
+FORCE_RELEASE = False  # set to True to simulate RELEASE
+
 
 @app.get("/whale-status")
 def whale_status():
