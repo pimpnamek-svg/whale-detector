@@ -301,6 +301,10 @@ class ForceRequest(BaseModel):
 @app.get("/")
 def root() -> Dict[str, str]:
     return {"status": "ok", "service": "Liquidity Grab Scanner"}
+@app.get("/btc-volume")
+def btc_volume():
+    data = btc_volume_state()
+    return data
 
 
 @app.get("/whale-status")
