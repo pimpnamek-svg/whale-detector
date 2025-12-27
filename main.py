@@ -297,6 +297,23 @@ def admin_reset() -> Dict[str, str]:
     ENGINE.cycle_started_at = _now()
     ENGINE.last_data_update_at = _now()
     return {"status": "ok", "message": "Cycle reset"}
+  
+@app.get("/reset")
+def browser_reset():
+    ENGINE.cycle_started_at = time.time()
+    ENGINE.last_data_update_at = time.time()
+    return {
+        "status": "ok",
+        "message": "Engine reset (browser-safe)"
+    }
+@app.get("/admin/reset")
+def browser_admin_reset():
+    ENGINE.cycle_started_at = time.time()
+    ENGINE.last_data_update_at = time.time()
+    return {
+        "status": "ok",
+        "message": "Engine reset (browser-safe)"
+    }
 
 
 @app.post("/admin/force")
