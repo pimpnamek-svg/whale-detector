@@ -300,26 +300,18 @@ def btc_volume_state():
 # WHALE STATE FROM BTC
 # ==========================
 def whale_state_from_btc():
-    """
-    Returns the whale phase based on BTC volume behavior.
-    """
     data = btc_volume_state()
-
     state = data.get("state")
 
     if state in {"POSITIONING", "TRANSITION", "DISTRIBUTION", "RELEASE"}:
         return state
 
-    # safe fallback
     return "POSITIONING"
 
 # ==========================
 # TOKEN-LEVEL WHALE SCAN
 # ==========================
 def token_volume_whale_scan(symbol: str):
-    """
-    Detects whale-like volume behavior for a single OKX token.
-    """
     try:
         exchange = ccxt.okx()
 
@@ -337,14 +329,13 @@ def token_volume_whale_scan(symbol: str):
 
         if ratio < 1.2:
             state = "QUIET"
-        elif 1.2 <= ratio < 1.8:
+        elif ratio < 1.8:
             state = "WARMING"
-        elif 1.8 <= ratio < 2.5:
+        elif ratio < 2.5:
             state = "HOT"
         else:
             state = "EXPLOSIVE"
 
-        # mark data as fresh
         ENGINE.last_data_update_at = time.time()
 
         return {
@@ -361,33 +352,52 @@ def token_volume_whale_scan(symbol: str):
             "state": "ERROR",
             "error": str(e)
         }
+def scan_okx_tokens():
+    results = []
+
+    for symbol in OKX_TOKENS:
+        results.append(token_volume_whale_scan(symbol))
+
+    results.sort(
+        key=lambda x: x.get("volume_ratio", 0),
+        reverse=True
+    )
+
+    return results
+
 # ==========================
 # BTC + TOKEN AGREEMENT
 # ==========================
 def whale_candidates():
-    btc_state = whale_state_from_btc()
+    try:
+        btc_state = whale_state_from_btc()
 
-    # BTC is the gatekeeper
-    if btc_state != "RELEASE":
+        if btc_state != "RELEASE":
+            return {
+                "btc_state": btc_state,
+                "candidates": [],
+                "reason": "BTC not in RELEASE"
+            }
+
+        tokens = scan_okx_tokens() or []
+
+        candidates = [
+            t for t in tokens
+            if t.get("state") in {"HOT", "EXPLOSIVE"}
+        ]
+
         return {
             "btc_state": btc_state,
-            "candidates": [],
-            "reason": "BTC not in RELEASE"
+            "candidates": candidates,
+            "reason": "BTC RELEASE + token confirmation"
         }
 
-    tokens = scan_okx_tokens()
-
-    candidates = [
-        t for t in tokens
-        if t.get("state") in {"HOT", "EXPLOSIVE"}
-    ]
-
-    return {
-        "btc_state": btc_state,
-        "candidates": candidates,
-        "reason": "BTC RELEASE + token confirmation"
-    }
-
+    except Exception as e:
+        return {
+            "btc_state": "UNKNOWN",
+            "candidates": [],
+            "reason": f"ERROR: {str(e)}"
+        }
 
 # ==========================
 # API MODELS (ADMIN)
@@ -469,6 +479,7 @@ def whale_status(force: str | None = Query(default=None)):
 @app.get("/whale-candidates")
 def whale_candidates_route():
     return whale_candidates()
+
 
 
 @app.post("/admin/reset")
