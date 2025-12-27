@@ -449,7 +449,7 @@ def evaluate_trade(symbol: str):
 
         # === Scoring ===
         score = 0
-        if rr >= 3:
+        if round(rr, 2) >= 3:
             score += 40
         if structure_ok:
             score += 30
