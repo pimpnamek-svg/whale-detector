@@ -366,6 +366,13 @@ def root() -> Dict[str, str]:
 def btc_volume():
     data = btc_volume_state()
     return data
+@app.get("/token-whales")
+def token_whales():
+    data = scan_okx_tokens()
+    return {
+        "btc_state": whale_state_from_btc(),
+        "tokens": data
+    }
 
 
 @app.get("/whale-status")
