@@ -49,6 +49,19 @@ PHASE_DURATIONS_SECONDS = {
 # Safety defaults:
 MIN_CONFIDENCE_TO_ALLOW = 70  # Only "allow" if in RELEASE AND confidence >= this
 STALE_DATA_FAIL_AFTER = 6 * 60  # If your external data feed (later) hasn't updated, show fail_state.
+# ==========================
+# CONFIG
+# ==========================
+STALE_DATA_FAIL_AFTER = 6 * 60
+
+OKX_TOKENS = [
+    "ETH/USDT",
+    "SOL/USDT",
+    "AVAX/USDT",
+    "BNB/USDT",
+    "DOGE/USDT",
+    "PEPE/USDT"
+]
 
 
 # ==========================
@@ -281,6 +294,54 @@ def btc_volume_state():
     except Exception as e:
         return {
             "state": "UNKNOWN",
+            "error": str(e)
+        }
+# ==========================
+# TOKEN-LEVEL WHALE SCAN
+# ==========================
+def token_volume_whale_scan(symbol: str):
+    """
+    Detects whale-like volume behavior for a single OKX token.
+    """
+    try:
+        exchange = ccxt.okx()
+
+        candles = exchange.fetch_ohlcv(
+            symbol=symbol,
+            timeframe="1m",
+            limit=30
+        )
+
+        volumes = [c[5] for c in candles]
+        avg_volume = sum(volumes[:-1]) / (len(volumes) - 1)
+        last_volume = volumes[-1]
+
+        ratio = last_volume / avg_volume if avg_volume > 0 else 0
+
+        if ratio < 1.2:
+            state = "QUIET"
+        elif 1.2 <= ratio < 1.8:
+            state = "WARMING"
+        elif 1.8 <= ratio < 2.5:
+            state = "HOT"
+        else:
+            state = "EXPLOSIVE"
+
+        # mark data as fresh
+        ENGINE.last_data_update_at = time.time()
+
+        return {
+            "symbol": symbol,
+            "state": state,
+            "volume_ratio": round(ratio, 2),
+            "last_volume": round(last_volume, 2),
+            "avg_volume": round(avg_volume, 2),
+        }
+
+    except Exception as e:
+        return {
+            "symbol": symbol,
+            "state": "ERROR",
             "error": str(e)
         }
 
