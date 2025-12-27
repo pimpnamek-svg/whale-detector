@@ -234,6 +234,55 @@ def market_heartbeat():
         return True
     except Exception:
         return False
+# ==========================
+# BTC VOLUME WHALE SIGNAL
+# ==========================
+def btc_volume_state():
+    """
+    Detects whale phase based on BTC volume behavior.
+    SAFE: read-only, no orders, no side effects.
+    """
+    try:
+        exchange = ccxt.okx()
+        
+        # 1-minute candles, last ~30 minutes
+        candles = exchange.fetch_ohlcv(
+            symbol="BTC/USDT",
+            timeframe="1m",
+            limit=30
+        )
+
+        volumes = [c[5] for c in candles]
+        avg_volume = sum(volumes[:-1]) / (len(volumes) - 1)
+        last_volume = volumes[-1]
+
+        ratio = last_volume / avg_volume if avg_volume > 0 else 0
+
+        # --- Heuristic thresholds (tunable later) ---
+        if ratio < 1.2:
+            state = "POSITIONING"
+        elif 1.2 <= ratio < 1.8:
+            state = "TRANSITION"
+        elif 1.8 <= ratio < 2.5:
+            state = "DISTRIBUTION"
+        else:
+            state = "RELEASE"
+
+        # mark data as fresh
+        ENGINE.last_data_update_at = time.time()
+
+        return {
+            "state": state,
+            "volume_ratio": round(ratio, 2),
+            "last_volume": round(last_volume, 2),
+            "avg_volume": round(avg_volume, 2),
+        }
+
+    except Exception as e:
+        return {
+            "state": "UNKNOWN",
+            "error": str(e)
+        }
 
 
 # ==========================
