@@ -344,6 +344,32 @@ def token_volume_whale_scan(symbol: str):
             "state": "ERROR",
             "error": str(e)
         }
+# ==========================
+# BTC + TOKEN AGREEMENT
+# ==========================
+def whale_candidates():
+    btc_state = whale_state_from_btc()
+
+    # BTC is the gatekeeper
+    if btc_state != "RELEASE":
+        return {
+            "btc_state": btc_state,
+            "candidates": [],
+            "reason": "BTC not in RELEASE"
+        }
+
+    tokens = scan_okx_tokens()
+
+    candidates = [
+        t for t in tokens
+        if t.get("state") in {"HOT", "EXPLOSIVE"}
+    ]
+
+    return {
+        "btc_state": btc_state,
+        "candidates": candidates,
+        "reason": "BTC RELEASE + token confirmation"
+    }
 
 
 # ==========================
