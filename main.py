@@ -398,6 +398,47 @@ def whale_candidates():
             "candidates": [],
             "reason": f"ERROR: {str(e)}"
         }
+# ==========================
+# MANUAL TRADE EVALUATOR (PLACEHOLDER)
+# ==========================
+def evaluate_trade(symbol: str):
+    """
+    Manual trade evaluation stub.
+    Replace internals later with your real evaluator logic.
+    """
+    try:
+        # Placeholder metrics (we will replace these)
+        risk_reward = 3.2
+        structure_ok = True
+        volatility_ok = True
+
+        score = 0
+        if risk_reward >= 3:
+            score += 40
+        if structure_ok:
+            score += 30
+        if volatility_ok:
+            score += 30
+
+        grade = "A" if score >= 80 else "B" if score >= 65 else "C"
+
+        return {
+            "symbol": symbol,
+            "risk_reward": risk_reward,
+            "structure_ok": structure_ok,
+            "volatility_ok": volatility_ok,
+            "confidence_score": score,
+            "confidence_grade": grade,
+            "decision": "PASS" if score < 70 else "CONSIDER"
+        }
+
+    except Exception as e:
+        return {
+            "symbol": symbol,
+            "error": str(e),
+            "decision": "ERROR"
+        }
+
 
 # ==========================
 # API MODELS (ADMIN)
@@ -480,6 +521,9 @@ def whale_status(force: str | None = Query(default=None)):
 def whale_candidates_route():
     return whale_candidates()
 
+@app.get("/evaluate-trade")
+def evaluate_trade_route(symbol: str):
+    return evaluate_trade(symbol)
 
 
 @app.post("/admin/reset")
