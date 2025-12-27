@@ -435,7 +435,7 @@ def evaluate_trade(symbol: str):
 
         # === Stop & Target ===
         stop = current_price - (1.5 * atr)
-        target = current_price + (3.0 * atr)
+        target = current_price + (4.5 * atr)
 
         risk = current_price - stop
         reward = target - current_price
