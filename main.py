@@ -297,6 +297,23 @@ def btc_volume_state():
             "error": str(e)
         }
 # ==========================
+# WHALE STATE FROM BTC
+# ==========================
+def whale_state_from_btc():
+    """
+    Returns the whale phase based on BTC volume behavior.
+    """
+    data = btc_volume_state()
+
+    state = data.get("state")
+
+    if state in {"POSITIONING", "TRANSITION", "DISTRIBUTION", "RELEASE"}:
+        return state
+
+    # safe fallback
+    return "POSITIONING"
+
+# ==========================
 # TOKEN-LEVEL WHALE SCAN
 # ==========================
 def token_volume_whale_scan(symbol: str):
