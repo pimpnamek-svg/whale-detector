@@ -449,6 +449,9 @@ def whale_status(force: str | None = Query(default=None)):
         "message": _message(phase, permission, cooldown, confidence, fail_state),
     }
 
+@app.get("/whale-candidates")
+def whale_candidates_route():
+    return whale_candidates()
 
 
 @app.post("/admin/reset")
