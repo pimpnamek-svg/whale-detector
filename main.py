@@ -23,6 +23,7 @@ from typing import Optional, Dict, Any
 
 from fastapi import FastAPI, Query
 from pydantic import BaseModel, Field
+import ccxt
 
 
 # ==========================
