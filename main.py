@@ -399,37 +399,83 @@ def whale_candidates():
             "reason": f"ERROR: {str(e)}"
         }
 # ==========================
-# MANUAL TRADE EVALUATOR (PLACEHOLDER)
+# REAL TRADE EVALUATOR (MANUAL)
 # ==========================
 def evaluate_trade(symbol: str):
-    """
-    Manual trade evaluation stub.
-    Replace internals later with your real evaluator logic.
-    """
     try:
-        # Placeholder metrics (we will replace these)
-        risk_reward = 3.2
-        structure_ok = True
-        volatility_ok = True
+        exchange = ccxt.okx()
 
+        # Fetch recent candles (15m for structure)
+        candles = exchange.fetch_ohlcv(
+            symbol=symbol,
+            timeframe="15m",
+            limit=50
+        )
+
+        highs = [c[2] for c in candles]
+        lows = [c[3] for c in candles]
+        closes = [c[4] for c in candles]
+
+        current_price = closes[-1]
+
+        # === ATR (14) ===
+        trs = []
+        for i in range(1, len(candles)):
+            high = highs[i]
+            low = lows[i]
+            prev_close = closes[i - 1]
+            tr = max(
+                high - low,
+                abs(high - prev_close),
+                abs(low - prev_close)
+            )
+            trs.append(tr)
+
+        atr = sum(trs[-14:]) / 14
+
+        # === Stop & Target ===
+        stop = current_price - (1.5 * atr)
+        target = current_price + (3.0 * atr)
+
+        risk = current_price - stop
+        reward = target - current_price
+        rr = reward / risk if risk > 0 else 0
+
+        # === Structure Check (simple) ===
+        structure_ok = current_price > sum(closes[-20:]) / 20  # above 20-period mean
+
+        # === Volatility Check ===
+        volatility_ok = atr / current_price < 0.03  # <3% ATR
+
+        # === Scoring ===
         score = 0
-        if risk_reward >= 3:
+        if rr >= 3:
             score += 40
         if structure_ok:
             score += 30
         if volatility_ok:
             score += 30
 
-        grade = "A" if score >= 80 else "B" if score >= 65 else "C"
+        grade = (
+            "A" if score >= 80 else
+            "B" if score >= 65 else
+            "C"
+        )
+
+        decision = "CONSIDER" if score >= 70 else "PASS"
 
         return {
             "symbol": symbol,
-            "risk_reward": risk_reward,
+            "price": round(current_price, 4),
+            "atr": round(atr, 4),
+            "stop": round(stop, 4),
+            "target": round(target, 4),
+            "risk_reward": round(rr, 2),
             "structure_ok": structure_ok,
             "volatility_ok": volatility_ok,
             "confidence_score": score,
             "confidence_grade": grade,
-            "decision": "PASS" if score < 70 else "CONSIDER"
+            "decision": decision
         }
 
     except Exception as e:
@@ -438,7 +484,6 @@ def evaluate_trade(symbol: str):
             "error": str(e),
             "decision": "ERROR"
         }
-
 
 # ==========================
 # API MODELS (ADMIN)
