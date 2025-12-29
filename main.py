@@ -20,6 +20,8 @@ Railway start command:
 import time
 from dataclasses import dataclass
 from typing import Optional, Dict, Any
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from fastapi import FastAPI, Query
 from pydantic import BaseModel, Field
@@ -30,7 +32,7 @@ import ccxt
 # APP
 # ==========================
 app = FastAPI(title="OKX Liquidity Grab Scanner", version="1.0.0")
-
+app.mount("/static", StaticFiles(directory=static), name=static")
 
 # ==========================
 # STATE MACHINE CONFIG
@@ -597,6 +599,10 @@ def browser_admin_reset():
         "status": "ok",
         "message": "Engine reset (browser-safe)"
     }
+@app.get("/dashboard")
+def dashboard():
+    return FileResponse("static/dashboard.html")
+
 @app.get("/heartbeat")
 def heartbeat():
     ok = market_heartbeat()
