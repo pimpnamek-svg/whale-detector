@@ -32,7 +32,7 @@ import ccxt
 # APP
 # ==========================
 app = FastAPI(title="OKX Liquidity Grab Scanner", version="1.0.0")
-app.mount("/static", StaticFiles(directory=static), name=static")
+app.mount("/static", StaticFiles(directory=static), name="static")
 
 # ==========================
 # STATE MACHINE CONFIG
