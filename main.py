@@ -17,22 +17,18 @@ Railway start command:
   uvicorn main:app --host 0.0.0.0 --port $PORT
 """
 
-import time
-from dataclasses import dataclass
-from typing import Optional, Dict, Any
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-
-from fastapi import FastAPI, Query
-from pydantic import BaseModel, Field
-import ccxt
-
-
 # ==========================
 # APP
 # ==========================
-app = FastAPI(title="OKX Liquidity Grab Scanner", version="1.0.0")
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
+app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
+@app.get("/", response_class=HTMLResponse)
+async def read_root():
+    with open("static/index.html") as f:
+        return f.read()
 
 
 # ==========================
