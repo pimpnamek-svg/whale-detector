@@ -9,15 +9,17 @@ async def root():
 @app.get("/status")
 def status():
     phase = current_phase()
+    confidence = compute_confidence(phase)
     permission = "ALLOW" if phase == "RELEASE" else "LOCKED"
 
     return {
         "engine": "running",
         "phase": phase,
-        "confidence": 0,
+        "confidence": confidence,
         "permission": permission,
         "note": "Display-only. No trades placed."
     }
+
 
 import time
 
@@ -45,3 +47,26 @@ def current_phase():
         if elapsed < running:
             return state
     return "POSITIONING"
+# ==========================
+# CONFIDENCE ENGINE (v1 - hooks only)
+# ==========================
+
+def compute_confidence(phase: str) -> int:
+    """
+    Display-only confidence score.
+    This is a scaffold — real whale inputs plug in later.
+    """
+    base = {
+        "POSITIONING": 10,
+        "TRANSITION": 25,
+        "DISTRIBUTION": 15,
+        "RELEASE": 40,
+    }.get(phase, 0)
+
+    # Future hooks (placeholders)
+    whale_accumulation = 0   # +30 later
+    volume_alignment = 0     # +20 later
+    structure_intact = 0     # +10 later
+
+    confidence = base + whale_accumulation + volume_alignment + structure_intact
+    return min(confidence, 100)
