@@ -22,15 +22,25 @@ Railway start command:
 # ==========================
 
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from typing import Optional
+
 app = FastAPI()
-app.mount("/static", StaticFiles(directory="static"), name="static")
+
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
-    with open("static/index.html") as f:
-        return f.read()
+    return """
+    <html>
+        <head>
+            <title>Whale Detector</title>
+        </head>
+        <body style="font-family: sans-serif;">
+            <h1>🐋 Whale Detector Online</h1>
+            <p>Status: ENGINE RUNNING</p>
+        </body>
+    </html>
+    """
+
 
 
 # ==========================
