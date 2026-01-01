@@ -20,6 +20,17 @@ def status():
         "note": "Display-only. No trades placed."
     }
 
+@app.get("/decision")
+def decision():
+    phase = current_phase()
+    confidence = compute_confidence(phase)
+    decision = decision_state(phase, confidence)
+
+    return {
+        "phase": phase,
+        "confidence": confidence,
+        **decision
+    }
 
 import time
 
@@ -70,3 +81,26 @@ def compute_confidence(phase: str) -> int:
 
     confidence = base + whale_accumulation + volume_alignment + structure_intact
     return min(confidence, 100)
+# ==========================
+# DECISION ENGINE (v1)
+# ==========================
+
+MIN_CONFIDENCE_TO_ALLOW = 60
+
+def decision_state(phase: str, confidence: int):
+    if phase != "RELEASE":
+        return {
+            "decision": "LOCKED",
+            "reason": f"Not in RELEASE phase ({phase})"
+        }
+
+    if confidence < MIN_CONFIDENCE_TO_ALLOW:
+        return {
+            "decision": "LOCKED",
+            "reason": f"Confidence {confidence} < required {MIN_CONFIDENCE_TO_ALLOW}"
+        }
+
+    return {
+        "decision": "ALLOW",
+        "reason": f"RELEASE phase with confidence {confidence}"
+    }
