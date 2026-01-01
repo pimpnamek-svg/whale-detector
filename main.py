@@ -51,8 +51,8 @@ ENGINE_START = int(time.time())
 CYCLE_LENGTH = sum(PHASE_DURATIONS.values())
 
 def current_phase():
-    if FORCE_RELEASE:
-        return "RELEASE"
+    if FORCE_RELEASE: =True
+        return "RELEASE" =True
 
     elapsed = (int(time.time()) - ENGINE_START) % CYCLE_LENGTH
     running = 0
