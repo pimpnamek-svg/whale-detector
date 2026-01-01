@@ -51,6 +51,9 @@ ENGINE_START = int(time.time())
 CYCLE_LENGTH = sum(PHASE_DURATIONS.values())
 
 def current_phase():
+    if FORCE_RELEASE:
+        return "RELEASE"
+
     elapsed = (int(time.time()) - ENGINE_START) % CYCLE_LENGTH
     running = 0
     for state in STATE_ORDER:
@@ -58,6 +61,7 @@ def current_phase():
         if elapsed < running:
             return state
     return "POSITIONING"
+
 # ==========================
 # CONFIDENCE ENGINE (v1 - hooks only)
 # ==========================
@@ -88,6 +92,12 @@ def compute_confidence(phase: str) -> int:
 MIN_CONFIDENCE_TO_ALLOW = 60
 
 def decision_state(phase: str, confidence: int):
+    if FORCE_LOCK:
+        return {
+            "decision": "LOCKED",
+            "reason": "FORCE_LOCK enabled"
+        }
+
     if phase != "RELEASE":
         return {
             "decision": "LOCKED",
@@ -104,3 +114,10 @@ def decision_state(phase: str, confidence: int):
         "decision": "ALLOW",
         "reason": f"RELEASE phase with confidence {confidence}"
     }
+
+# ==========================
+# MANUAL OVERRIDES (testing only)
+# ==========================
+
+FORCE_RELEASE = False   # True => force RELEASE phase
+FORCE_LOCK = False      # True => force LOCKED no matter what
