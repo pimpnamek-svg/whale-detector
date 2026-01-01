@@ -497,9 +497,13 @@ class ForceRequest(BaseModel):
 # ==========================
 # ROUTES
 # ==========================
-@app.get("/")
-def root() -> Dict[str, str]:
-    return {"status": "ok", "service": "Liquidity Grab Scanner"}
+@app.get("/", response_class=HTMLResponse)
+async def read_root():
+    return HTMLResponse("""
+<!DOCTYPE html>
+<html>... YOUR FULL HTML CODE HERE ...</html>
+    """.strip())
+
 @app.get("/btc-volume")
 def btc_volume():
     data = btc_volume_state()
