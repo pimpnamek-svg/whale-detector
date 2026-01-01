@@ -6,16 +6,17 @@ OKX Liquidity Grab Scanner (DISPLAY / SAFETY MODE)
   - POST /admin/reset   -> resets state machine timer
   - POST /admin/force   -> optional manual overrides
 
-IMPORTANT:
-- This version is "display-only": it does NOT place trades, and it does NOT claim certainty.
-- Designed to be used alongside your Trade Evaluator: you read this as a "permission + timing + confidence" layer.
+# IMPORTANT:
+# - This version is "display-only": it does NOT place trades, and it does NOT claim certainty.
+# - Designed to be used alongside your Trade Evaluator: you read this as a
+#   "permission + timing + confidence" layer.
+#
+# Run locally:
+#   uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+#
+# Railway start command:
+#   uvicorn main:app --host 0.0.0.0 --port $PORT
 
-Run locally:
-  uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-
-Railway start command:
-  uvicorn main:app --host 0.0.0.0 --port $PORT
-"""
 
 # ==========================
 # APP
