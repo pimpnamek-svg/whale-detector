@@ -246,8 +246,6 @@ def decision():
         **decision,
         **management
     }
-
-
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard():
     phase = current_phase()
@@ -255,22 +253,24 @@ def dashboard():
     decision = decision_state(phase, confidence)
     management = trade_management(confidence)
 
+    # ✅ THESE MUST BE HERE (Python space)
+    time_remaining = format_seconds(seconds_until_phase_end())
+    release_countdown = format_seconds(seconds_until_next_release())
+
     color = "green" if decision["decision"] == "ALLOW" else "red"
 
     return f"""
     <html>
-          time_remaining = format_seconds(seconds_until_phase_end())
-          release_countdown = format_seconds(seconds_until_next_release())
-
         <head><title>Whale Detector Dashboard</title></head>
         <body style="font-family:sans-serif;padding:40px;">
             <h1>🐋 Whale Detector</h1>
 
             <h2>Phase: {phase}</h2>
             <h3>Confidence: {confidence}</h3>
-           <p><strong>Time remaining in phase:</strong> {time_remaining}</p>
-<p><strong>Next RELEASE in:</strong> {release_countdown}</p>
- 
+
+            <p><strong>Time remaining in phase:</strong> {time_remaining}</p>
+            <p><strong>Next RELEASE in:</strong> {release_countdown}</p>
+
             <h2 style="color:{color};">{decision["decision"]}</h2>
             <p>{decision["reason"]}</p>
 
@@ -282,3 +282,7 @@ def dashboard():
         </body>
     </html>
     """
+
+
+
+   
