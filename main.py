@@ -80,7 +80,7 @@ def current_phase():
 # CONFIDENCE ENGINE (v1)
 # ==========================
 
-def compute_confidence(
+def compute_confidence_display(
     phase: str,
     whale_accumulation: bool,
     volume_alignment: bool,
@@ -228,7 +228,8 @@ async def root():
 @app.get("/status")
 def status():
     phase = current_phase()
-    confidence = compute_confidence(phase)
+    confidence = compute_confidence_display(phase)
+
     permission = "ALLOW" if phase == "RELEASE" else "LOCKED"
 
     return {
@@ -238,6 +239,7 @@ def status():
         "permission": permission,
         "note": "Display-only. No trades placed."
     }
+
 
 
 @app.get("/decision")
