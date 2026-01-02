@@ -237,8 +237,7 @@ def dashboard():
 
             <h2>Phase: {phase}</h2>
             <h3>Confidence: {confidence}</h3>
-            <p>Structure: {"BROKEN" if SIM_STRUCTURE_BREAK else "INTACT"}</p>
-
+            
             <h2 style="color:{color};">{decision["decision"]}</h2>
             <p>{decision["reason"]}</p>
 
