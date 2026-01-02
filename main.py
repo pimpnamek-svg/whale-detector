@@ -118,6 +118,33 @@ def decision_state(phase: str, confidence: int):
         "decision": "ALLOW",
         "reason": f"RELEASE phase with confidence {confidence}"
     }
+# ==========================
+# TRADE MANAGEMENT TIERS
+# ==========================
+
+def trade_management(confidence: int):
+    if confidence >= 90:
+        return {
+            "mode": "RUNNER",
+            "instruction": "Let trade run. No early TP. Trail only on structure break."
+        }
+
+    if confidence >= 75:
+        return {
+            "mode": "TREND",
+            "instruction": "Hold trade. Use loose trailing stop."
+        }
+
+    if confidence >= 60:
+        return {
+            "mode": "CAUTIOUS",
+            "instruction": "Tighten stop. No new adds."
+        }
+
+    return {
+        "mode": "NO_TRADE",
+        "instruction": "Do not hold or enter trade."
+    }
 
 
 # ==========================
@@ -149,40 +176,42 @@ def decision():
     phase = current_phase()
     confidence = compute_confidence(phase)
     decision = decision_state(phase, confidence)
+    management = trade_management(confidence)
 
     return {
         "phase": phase,
         "confidence": confidence,
-        **decision
+        **decision,
+        **management
     }
+
 
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard():
     phase = current_phase()
     confidence = compute_confidence(phase)
     decision = decision_state(phase, confidence)
+    management = trade_management(confidence)
 
     color = "green" if decision["decision"] == "ALLOW" else "red"
 
     return f"""
     <html>
-        <head>
-            <title>Whale Detector Dashboard</title>
-        </head>
-        <body style="font-family: sans-serif; padding: 40px;">
+        <head><title>Whale Detector Dashboard</title></head>
+        <body style="font-family:sans-serif;padding:40px;">
             <h1>🐋 Whale Detector</h1>
 
             <h2>Phase: {phase}</h2>
             <h3>Confidence: {confidence}</h3>
 
-            <h2 style="color: {color};">
-                {decision["decision"]}
-            </h2>
-
+            <h2 style="color:{color};">{decision["decision"]}</h2>
             <p>{decision["reason"]}</p>
 
-            <hr />
-            <p><em>Display-only. No trades placed.</em></p>
+            <h3>Mode: {management["mode"]}</h3>
+            <p>{management["instruction"]}</p>
+
+            <hr/>
+            <em>Display-only. No trades placed.</em>
         </body>
     </html>
     """
