@@ -129,3 +129,33 @@ def decision():
         **decision
     }
 
+@app.get("/dashboard", response_class=HTMLResponse)
+def dashboard():
+    phase = current_phase()
+    confidence = compute_confidence(phase)
+    decision = decision_state(phase, confidence)
+
+    color = "green" if decision["decision"] == "ALLOW" else "red"
+
+    return f"""
+    <html>
+        <head>
+            <title>Whale Detector Dashboard</title>
+        </head>
+        <body style="font-family: sans-serif; padding: 40px;">
+            <h1>🐋 Whale Detector</h1>
+
+            <h2>Phase: {phase}</h2>
+            <h3>Confidence: {confidence}</h3>
+
+            <h2 style="color: {color};">
+                {decision["decision"]}
+            </h2>
+
+            <p>{decision["reason"]}</p>
+
+            <hr />
+            <p><em>Display-only. No trades placed.</em></p>
+        </body>
+    </html>
+    """
