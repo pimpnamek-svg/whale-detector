@@ -8,7 +8,7 @@ app = FastAPI()
 # MANUAL OVERRIDES (testing only)
 # ==========================
 
-FORCE_RELEASE = False   # True => force RELEASE phase
+FORCE_RELEASE = True   # True => force RELEASE phase
 FORCE_LOCK = False      # True => force LOCKED no matter what
 
 
