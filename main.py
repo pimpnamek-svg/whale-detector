@@ -158,7 +158,7 @@ def decision_state(phase: str, confidence: int):
 def evaluate(signal: EvaluatorSignal):
     phase = current_phase()
 
-    confidence = compute_confidence_display(
+    confidence = compute_confidence(
         phase=phase,
         whale_accumulation=signal.whale_accumulation,
         volume_alignment=signal.volume_alignment,
@@ -176,6 +176,7 @@ def evaluate(signal: EvaluatorSignal):
         **decision,
         **management
     }
+
 
 # ==========================
 # TRADE MANAGEMENT TIERS
