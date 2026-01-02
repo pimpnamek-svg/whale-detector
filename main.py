@@ -61,12 +61,13 @@ def compute_confidence(phase: str) -> int:
         "RELEASE": 40,
     }.get(phase, 0)
 
-    whale_accumulation = 0
-    volume_alignment = 0
-    structure_intact = 0
+    whale_accumulation = 30 if SIM_WHALE_ACCUMULATION else 0
+    volume_alignment = 20 if SIM_VOLUME_ALIGNMENT else 0
+    structure_intact = 10 if SIM_STRUCTURE_INTACT else 0
 
     confidence = base + whale_accumulation + volume_alignment + structure_intact
     return min(confidence, 100)
+
 
 
 # ==========================
