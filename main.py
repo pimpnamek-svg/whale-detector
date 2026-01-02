@@ -18,38 +18,13 @@ class EvaluatorSignal(BaseModel):
 # ==========================
 # MANUAL OVERRIDES (testing only)
 # ==========================
-
 FORCE_RELEASE = True   # True => force RELEASE phase
-FORCE_LOCK = False      # True => force LOCKED no matter what
-# ==========================
-# SIMULATED WHALE SIGNALS (testing only)
-# ==========================
+FORCE_LOCK = True      # True => force LOCKED no matter what
 
-SIM_WHALE_ACCUMULATION = True   # +30
-SIM_VOLUME_ALIGNMENT = True    # +20
-SIM_STRUCTURE_INTACT = True    # +10
-
-# ==========================
-# CONFIDENCE DECAY (testing)
-# ==========================
-
-SIM_PULLBACK_SEVERITY = 2
-# 0 = no pullback
-# 1 = shallow pullback
-# 2 = deep pullback
-# 3 = structure break
-# ==========================
-# STRUCTURE STATE (testing)
-# ==========================
-
-SIM_STRUCTURE_BREAK = False
-# False = structure intact
-# True  = structure broken (hard exit condition)
 
 # ==========================
 # PHASE ENGINE (v1)
 # ==========================
-
 STATE_ORDER = ["POSITIONING", "TRANSITION", "DISTRIBUTION", "RELEASE"]
 
 PHASE_DURATIONS = {
@@ -62,8 +37,8 @@ PHASE_DURATIONS = {
 ENGINE_START = int(time.time())
 CYCLE_LENGTH = sum(PHASE_DURATIONS.values())
 
-
-def current_phase():
+def current_phase() -> str:
+    # Force RELEASE for testing
     if FORCE_RELEASE:
         return "RELEASE"
 
@@ -79,16 +54,14 @@ def current_phase():
 # ==========================
 # CONFIDENCE ENGINE (v1)
 # ==========================
-
-def compute_confidence_display(
+def compute_confidence(
     phase: str,
-    whale_accumulation: bool,
-    volume_alignment: bool,
-    structure_intact: bool,
-    pullback_severity: int,
-    structure_break: bool
+    whale_accumulation: bool = False,
+    volume_alignment: bool = False,
+    structure_intact: bool = False,
+    pullback_severity: int = 0,      # 0-3
+    structure_break: bool = False
 ) -> int:
-
     base = {
         "POSITIONING": 10,
         "TRANSITION": 25,
@@ -99,22 +72,23 @@ def compute_confidence_display(
     whale_score = 30 if whale_accumulation else 0
     volume_score = 20 if volume_alignment else 0
     structure_score = 10 if structure_intact else 0
-    
-    confidence = base + whale_score + volume_score + structure_score
-    
 
-    # === Confidence decay ===
-    if SIM_PULLBACK_SEVERITY == 1:
+    confidence = base + whale_score + volume_score + structure_score
+
+    # Confidence decay from pullbacks
+    if pullback_severity == 1:
         confidence -= 10
-    elif SIM_PULLBACK_SEVERITY == 2:
+    elif pullback_severity == 2:
         confidence -= 25
-    elif SIM_PULLBACK_SEVERITY == 3:
-        confidence = 0  # structure broken
-    # === Structure break overrides everything ===
-    if SIM_STRUCTURE_BREAK:
-        return 0
+    elif pullback_severity == 3:
+        confidence = 0  # structure basically broken
+
+    # Structure break overrides everything
+    if structure_break:
+        confidence = 0
 
     return max(min(confidence, 100), 0)
+
 
 
 
@@ -223,23 +197,12 @@ def compute_confidence_display(phase: str) -> int:
 @app.get("/", response_class=HTMLResponse)
 async def root():
     return "<h1>🐋 Whale Detector Online</h1>"
-
-
 @app.get("/status")
 def status():
     phase = current_phase()
-    confidence = compute_confidence_display(phase)
-
+    confidence = compute_confidence(phase)  # works again
     permission = "ALLOW" if phase == "RELEASE" else "LOCKED"
-
-    return {
-        "engine": "running",
-        "phase": phase,
-        "confidence": confidence,
-        "permission": permission,
-        "note": "Display-only. No trades placed."
-    }
-
+    return {"engine":"running","phase":phase,"confidence":confidence,"permission":permission}
 
 
 @app.get("/decision")
