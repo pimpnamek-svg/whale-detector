@@ -158,7 +158,7 @@ def decision_state(phase: str, confidence: int):
 def evaluate(signal: EvaluatorSignal):
     phase = current_phase()
 
-    confidence = compute_confidence(
+    confidence = compute_confidence_display(
         phase=phase,
         whale_accumulation=signal.whale_accumulation,
         volume_alignment=signal.volume_alignment,
@@ -204,6 +204,15 @@ def trade_management(confidence: int):
         "mode": "NO_TRADE",
         "instruction": "Do not hold or enter trade."
     }
+def compute_confidence_display(phase: str) -> int:
+    return compute_confidence(
+        phase=phase,
+        whale_accumulation=False,
+        volume_alignment=False,
+        structure_intact=False,
+        pullback_severity=0,
+        structure_break=False
+    )
 
 
 # ==========================
