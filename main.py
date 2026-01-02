@@ -1,38 +1,16 @@
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
+import time
 
 app = FastAPI()
 
-@app.get("/", response_class=HTMLResponse)
-async def root():
-    return "<h1>Whale Detector Online</h1>"
-@app.get("/status")
-def status():
-    phase = current_phase()
-    confidence = compute_confidence(phase)
-    permission = "ALLOW" if phase == "RELEASE" else "LOCKED"
+# ==========================
+# MANUAL OVERRIDES (testing only)
+# ==========================
 
-    return {
-        "engine": "running",
-        "phase": phase,
-        "confidence": confidence,
-        "permission": permission,
-        "note": "Display-only. No trades placed."
-    }
+FORCE_RELEASE = False   # True => force RELEASE phase
+FORCE_LOCK = False      # True => force LOCKED no matter what
 
-@app.get("/decision")
-def decision():
-    phase = current_phase()
-    confidence = compute_confidence(phase)
-    decision = decision_state(phase, confidence)
-
-    return {
-        "phase": phase,
-        "confidence": confidence,
-        **decision
-    }
-
-import time
 
 # ==========================
 # PHASE ENGINE (v1)
@@ -50,9 +28,10 @@ PHASE_DURATIONS = {
 ENGINE_START = int(time.time())
 CYCLE_LENGTH = sum(PHASE_DURATIONS.values())
 
+
 def current_phase():
-    if FORCE_RELEASE: =True
-        return "RELEASE" =True
+    if FORCE_RELEASE:
+        return "RELEASE"
 
     elapsed = (int(time.time()) - ENGINE_START) % CYCLE_LENGTH
     running = 0
@@ -62,15 +41,12 @@ def current_phase():
             return state
     return "POSITIONING"
 
+
 # ==========================
-# CONFIDENCE ENGINE (v1 - hooks only)
+# CONFIDENCE ENGINE (v1)
 # ==========================
 
 def compute_confidence(phase: str) -> int:
-    """
-    Display-only confidence score.
-    This is a scaffold — real whale inputs plug in later.
-    """
     base = {
         "POSITIONING": 10,
         "TRANSITION": 25,
@@ -78,13 +54,14 @@ def compute_confidence(phase: str) -> int:
         "RELEASE": 40,
     }.get(phase, 0)
 
-    # Future hooks (placeholders)
-    whale_accumulation = 0   # +30 later
-    volume_alignment = 0     # +20 later
-    structure_intact = 0     # +10 later
+    whale_accumulation = 0
+    volume_alignment = 0
+    structure_intact = 0
 
     confidence = base + whale_accumulation + volume_alignment + structure_intact
     return min(confidence, 100)
+
+
 # ==========================
 # DECISION ENGINE (v1)
 # ==========================
@@ -115,9 +92,40 @@ def decision_state(phase: str, confidence: int):
         "reason": f"RELEASE phase with confidence {confidence}"
     }
 
+
 # ==========================
-# MANUAL OVERRIDES (testing only)
+# ROUTES
 # ==========================
 
-FORCE_RELEASE = False   # True => force RELEASE phase
-FORCE_LOCK = False      # True => force LOCKED no matter what
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    return "<h1>🐋 Whale Detector Online</h1>"
+
+
+@app.get("/status")
+def status():
+    phase = current_phase()
+    confidence = compute_confidence(phase)
+    permission = "ALLOW" if phase == "RELEASE" else "LOCKED"
+
+    return {
+        "engine": "running",
+        "phase": phase,
+        "confidence": confidence,
+        "permission": permission,
+        "note": "Display-only. No trades placed."
+    }
+
+
+@app.get("/decision")
+def decision():
+    phase = current_phase()
+    confidence = compute_confidence(phase)
+    decision = decision_state(phase, confidence)
+
+    return {
+        "phase": phase,
+        "confidence": confidence,
+        **decision
+    }
+
