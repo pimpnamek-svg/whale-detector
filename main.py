@@ -49,6 +49,34 @@ def current_phase() -> str:
         if elapsed < running:
             return state
     return "POSITIONING"
+def seconds_until_phase_end() -> int:
+    """Seconds remaining in the current phase."""
+    elapsed = (int(time.time()) - ENGINE_START) % CYCLE_LENGTH
+    running = 0
+    for state in STATE_ORDER:
+        duration = PHASE_DURATIONS[state]
+        if elapsed < running + duration:
+            return (running + duration) - elapsed
+        running += duration
+    return 0
+
+
+def seconds_until_next_release() -> int:
+    """Seconds until the next RELEASE phase begins."""
+    elapsed = (int(time.time()) - ENGINE_START) % CYCLE_LENGTH
+    running = 0
+    for state in STATE_ORDER:
+        duration = PHASE_DURATIONS[state]
+        if state == "RELEASE":
+            return max(0, running - elapsed)
+        running += duration
+    return 0
+
+
+def format_seconds(seconds: int) -> str:
+    mins = seconds // 60
+    secs = seconds % 60
+    return f"{mins}m {secs}s"
 
 
 # ==========================
@@ -231,13 +259,18 @@ def dashboard():
 
     return f"""
     <html>
+          time_remaining = format_seconds(seconds_until_phase_end())
+          release_countdown = format_seconds(seconds_until_next_release())
+
         <head><title>Whale Detector Dashboard</title></head>
         <body style="font-family:sans-serif;padding:40px;">
             <h1>🐋 Whale Detector</h1>
 
             <h2>Phase: {phase}</h2>
             <h3>Confidence: {confidence}</h3>
-            
+           <p><strong>Time remaining in phase:</strong> {time_remaining}</p>
+<p><strong>Next RELEASE in:</strong> {release_countdown}</p>
+ 
             <h2 style="color:{color};">{decision["decision"]}</h2>
             <p>{decision["reason"]}</p>
 
