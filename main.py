@@ -22,7 +22,7 @@ SIM_STRUCTURE_INTACT = True    # +10
 # CONFIDENCE DECAY (testing)
 # ==========================
 
-SIM_PULLBACK_SEVERITY = 0
+SIM_PULLBACK_SEVERITY = 2
 # 0 = no pullback
 # 1 = shallow pullback
 # 2 = deep pullback
