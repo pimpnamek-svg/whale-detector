@@ -27,6 +27,13 @@ SIM_PULLBACK_SEVERITY = 2
 # 1 = shallow pullback
 # 2 = deep pullback
 # 3 = structure break
+# ==========================
+# STRUCTURE STATE (testing)
+# ==========================
+
+SIM_STRUCTURE_BREAK = False
+# False = structure intact
+# True  = structure broken (hard exit condition)
 
 # ==========================
 # PHASE ENGINE (v1)
@@ -83,6 +90,9 @@ def compute_confidence(phase: str) -> int:
         confidence -= 25
     elif SIM_PULLBACK_SEVERITY == 3:
         confidence = 0  # structure broken
+    # === Structure break overrides everything ===
+    if SIM_STRUCTURE_BREAK:
+        return 0
 
     return max(min(confidence, 100), 0)
 
@@ -102,6 +112,12 @@ def decision_state(phase: str, confidence: int):
             "reason": "FORCE_LOCK enabled"
         }
 
+    if SIM_STRUCTURE_BREAK:
+        return {
+            "decision": "LOCKED",
+            "reason": "Structure broken"
+        }
+
     if phase != "RELEASE":
         return {
             "decision": "LOCKED",
@@ -118,6 +134,7 @@ def decision_state(phase: str, confidence: int):
         "decision": "ALLOW",
         "reason": f"RELEASE phase with confidence {confidence}"
     }
+
 # ==========================
 # TRADE MANAGEMENT TIERS
 # ==========================
@@ -203,6 +220,7 @@ def dashboard():
 
             <h2>Phase: {phase}</h2>
             <h3>Confidence: {confidence}</h3>
+            <p>Structure: {"BROKEN" if SIM_STRUCTURE_BREAK else "INTACT"}</p>
 
             <h2 style="color:{color};">{decision["decision"]}</h2>
             <p>{decision["reason"]}</p>
