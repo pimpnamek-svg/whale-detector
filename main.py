@@ -1,8 +1,19 @@
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
 import time
 
 app = FastAPI()
+# ==========================
+# EVALUATOR INPUT SCHEMA
+# ==========================
+
+class EvaluatorSignal(BaseModel):
+    whale_accumulation: bool
+    volume_alignment: bool
+    structure_intact: bool
+    pullback_severity: int  # 0–3
+    structure_break: bool
 
 # ==========================
 # MANUAL OVERRIDES (testing only)
@@ -69,7 +80,15 @@ def current_phase():
 # CONFIDENCE ENGINE (v1)
 # ==========================
 
-def compute_confidence(phase: str) -> int:
+def compute_confidence(
+    phase: str,
+    whale_accumulation: bool,
+    volume_alignment: bool,
+    structure_intact: bool,
+    pullback_severity: int,
+    structure_break: bool
+) -> int:
+
     base = {
         "POSITIONING": 10,
         "TRANSITION": 25,
@@ -77,11 +96,12 @@ def compute_confidence(phase: str) -> int:
         "RELEASE": 40,
     }.get(phase, 0)
 
-    whale_accumulation = 30 if SIM_WHALE_ACCUMULATION else 0
-    volume_alignment = 20 if SIM_VOLUME_ALIGNMENT else 0
-    structure_intact = 10 if SIM_STRUCTURE_INTACT else 0
-
-    confidence = base + whale_accumulation + volume_alignment + structure_intact
+    whale_score = 30 if whale_accumulation else 0
+    volume_score = 20 if volume_alignment else 0
+    structure_score = 10 if structure_intact else 0
+    
+    confidence = base + whale_score + volume_score + structure_score
+    
 
     # === Confidence decay ===
     if SIM_PULLBACK_SEVERITY == 1:
@@ -133,6 +153,28 @@ def decision_state(phase: str, confidence: int):
     return {
         "decision": "ALLOW",
         "reason": f"RELEASE phase with confidence {confidence}"
+    }
+@app.post("/evaluate")
+def evaluate(signal: EvaluatorSignal):
+    phase = current_phase()
+
+    confidence = compute_confidence(
+        phase=phase,
+        whale_accumulation=signal.whale_accumulation,
+        volume_alignment=signal.volume_alignment,
+        structure_intact=signal.structure_intact,
+        pullback_severity=signal.pullback_severity,
+        structure_break=signal.structure_break
+    )
+
+    decision = decision_state(phase, confidence)
+    management = trade_management(confidence)
+
+    return {
+        "phase": phase,
+        "confidence": confidence,
+        **decision,
+        **management
     }
 
 # ==========================
