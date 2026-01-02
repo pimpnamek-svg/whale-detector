@@ -18,6 +18,15 @@ SIM_WHALE_ACCUMULATION = True   # +30
 SIM_VOLUME_ALIGNMENT = True    # +20
 SIM_STRUCTURE_INTACT = True    # +10
 
+# ==========================
+# CONFIDENCE DECAY (testing)
+# ==========================
+
+SIM_PULLBACK_SEVERITY = 0
+# 0 = no pullback
+# 1 = shallow pullback
+# 2 = deep pullback
+# 3 = structure break
 
 # ==========================
 # PHASE ENGINE (v1)
@@ -66,7 +75,17 @@ def compute_confidence(phase: str) -> int:
     structure_intact = 10 if SIM_STRUCTURE_INTACT else 0
 
     confidence = base + whale_accumulation + volume_alignment + structure_intact
-    return min(confidence, 100)
+
+    # === Confidence decay ===
+    if SIM_PULLBACK_SEVERITY == 1:
+        confidence -= 10
+    elif SIM_PULLBACK_SEVERITY == 2:
+        confidence -= 25
+    elif SIM_PULLBACK_SEVERITY == 3:
+        confidence = 0  # structure broken
+
+    return max(min(confidence, 100), 0)
+
 
 
 
