@@ -10,6 +10,13 @@ app = FastAPI()
 
 FORCE_RELEASE = True   # True => force RELEASE phase
 FORCE_LOCK = False      # True => force LOCKED no matter what
+# ==========================
+# SIMULATED WHALE SIGNALS (testing only)
+# ==========================
+
+SIM_WHALE_ACCUMULATION = False   # +30
+SIM_VOLUME_ALIGNMENT = False    # +20
+SIM_STRUCTURE_INTACT = False    # +10
 
 
 # ==========================
