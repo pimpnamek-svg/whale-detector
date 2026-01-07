@@ -256,6 +256,16 @@ def dashboard():
     # ✅ THESE MUST BE HERE (Python space)
     time_remaining = format_seconds(seconds_until_phase_end())
     release_countdown = format_seconds(seconds_until_next_release())
+# shared state
+current_phase = "LOCKED"
+current_confidence = 40
+
+@app.route("/whale-status")
+def whale_status():
+    return jsonify({
+        "phase": current_phase,
+        "confidence": current_confidence
+    })
 
     color = "green" if decision["decision"] == "ALLOW" else "red"
 
